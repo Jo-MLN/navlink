@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NAV-LINK // Covoiturage</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;800&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#04070f;--panel:rgba(10,24,44,.7);--line:#12e0ff;--txt:#cfefff;--dim:#6f93aa;--warn:#ff3d8b;--ok:#2dffb0;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root{--bg:#04070f}}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;min-height:100vh;background:var(--bg);color:var(--txt);font-family:"Share Tech Mono",ui-monospace,monospace;
+background-image:linear-gradient(rgba(18,224,255,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(18,224,255,.06) 1px,transparent 1px),radial-gradient(ellipse at 50% -10%,#0b2a52 0,transparent 60%);background-size:40px 40px,40px 40px,100% 100%}
+body::after{content:"";position:fixed;inset:0;pointer-events:none;background:repeating-linear-gradient(transparent 0 2px,rgba(0,0,0,.25) 2px 3px)}
+main{max-width:760px;margin:0 auto;padding:24px 16px 60px;position:relative;z-index:1}
+h1,h2,.big{font-family:Orbitron,sans-serif;letter-spacing:.12em;text-transform:uppercase}
+h1{font-size:clamp(20px,5vw,30px);margin:0;color:var(--line);text-shadow:0 0 14px var(--line)}
+.sub{color:var(--dim);font-size:13px;margin:4px 0 22px}
+.status{float:right;font-size:11px;color:var(--ok)} .status.off{color:var(--warn)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+button,input,select{font:inherit;color:var(--txt)}
+.card,.pilot{background:var(--panel);border:1px solid var(--line);box-shadow:0 0 18px rgba(18,224,255,.18) inset,0 0 12px rgba(18,224,255,.15);padding:16px;border-radius:4px;clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,14px 100%,0 calc(100% - 14px))}
+.pilot{cursor:pointer;font-family:Orbitron,sans-serif;font-size:16px;letter-spacing:.1em;text-transform:uppercase;text-align:center;transition:.2s}
+.pilot:hover{background:rgba(18,224,255,.15);transform:translateY(-2px);box-shadow:0 0 24px var(--line)}
+.btn{background:transparent;border:1px solid var(--line);padding:10px 16px;cursor:pointer;text-transform:uppercase;letter-spacing:.1em;border-radius:2px;transition:.2s}
+.btn:hover{background:var(--line);color:#001018}
+.btn.alt{border-color:var(--warn);color:var(--warn)} .btn.alt:hover{background:var(--warn);color:#10000a}
+.back{margin-bottom:16px}
+.label{color:var(--dim);font-size:12px;text-transform:uppercase;letter-spacing:.15em}
+.big{font-size:clamp(34px,10vw,56px);font-weight:800;margin:4px 0 18px;color:var(--line);text-shadow:0 0 18px var(--line)}
+.big.debt{color:var(--warn);text-shadow:0 0 18px var(--warn)} .big.zero{color:var(--ok);text-shadow:0 0 18px var(--ok)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0}
+input,select{background:rgba(0,10,20,.8);border:1px solid #1c4a60;padding:10px;border-radius:2px;min-width:0;font-size:16px;max-width:100%}
+input:focus,select:focus{outline:none;border-color:var(--line);box-shadow:0 0 8px var(--line)}
+h2{font-size:14px;margin:26px 0 8px;color:var(--line)}
+.log{font-size:13px;border-left:2px solid #1c4a60;padding:4px 10px;margin:6px 0;color:var(--dim)}
+.chk{display:inline-flex;gap:6px;align-items:center;border:1px solid #1c4a60;padding:6px 10px;border-radius:2px;cursor:pointer}
+.chk input{min-width:auto}
+.hidden{display:none}
+.route{position:relative;margin:10px 0 18px;padding-left:22px;border-left:2px solid var(--line);box-shadow:-4px 0 10px -4px var(--line)}
+.stop{position:relative;display:flex;gap:14px;align-items:baseline;padding:8px 0}
+.stop::before{content:"";position:absolute;left:-29px;top:14px;width:12px;height:12px;border-radius:50%;background:var(--bg);border:2px solid var(--line);box-shadow:0 0 8px var(--line)}
+.stop .t{font-family:Orbitron,sans-serif;font-size:18px;min-width:70px}
+.stop.drv .n{color:var(--ok)}.stop.drv::before{border-color:var(--ok);box-shadow:0 0 8px var(--ok)}
+.stop.me .t,.stop.me .n{color:#ff2b2b;text-shadow:0 0 10px #ff2b2b;font-weight:bold}
+.stop.me::before{background:#ff2b2b;border-color:#ff2b2b;box-shadow:0 0 12px #ff2b2b}
+</style>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
+</head>
+<body>
+<main>
+  <span id="status" class="status off">● HORS LIGNE</span>
+  <h1>NAV-LINK</h1>
+  <div class="sub">// Système de transport &amp; crédits de bord</div>
+  <div id="app"></div>
+</main>
+<script>
+(function(){
+const el=document.getElementById("app");
+const CFG={apiKey:"AIzaSyDktsEtA23zVAJDtXt59d6AllOl13aGd60",authDomain:"airsoft-trajet.firebaseapp.com",projectId:"airsoft-trajet",storageBucket:"airsoft-trajet.firebasestorage.app",messagingSenderId:"796468093664",appId:"1:796468093664:web:76f9b63f75f49fdcbaa685"};
+const VAPID="BOhWCrisPe1F7C3tvvvNMEriub8_XsI49ogTg8E3tI2usZbvFYJFBxGyFQZwqMdFokSUnYKvsvlflI83Y9E4Rzs";
+async function enableNotif(rid){
+  try{
+    if(!("Notification" in window)||!firebase.messaging.isSupported()){flash("Notifications non supportées ici (iPhone : ajoute d’abord le site à l’écran d’accueil).");return}
+    if(await Notification.requestPermission()!=="granted"){flash("Notifications refusées.");return}
+    const reg=await navigator.serviceWorker.register("firebase-messaging-sw.js");
+    const tok=await firebase.messaging().getToken({vapidKey:VAPID,serviceWorkerRegistration:reg});
+    await firebase.firestore().collection("tokens").doc(tok).set({riderId:rid,at:Date.now()});
+    flash("✔ Notifications activées",1);
+  }catch(e){flash("Erreur notif : "+((e&&(e.code||e.message))||e))}
+}
+let S={riders:[],rate:0.2,pin:"",trips:[]};   // état partagé
+let db=null,ref=null,view=null,driverOK=false,saving=false;
+const uid=()=>Math.random().toString(36).slice(2,9);
+const eur=n=>(Math.round(n*100)/100).toFixed(2).replace(".",",")+" €";
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const status=ok=>{const s=document.getElementById("status");s.textContent=ok?"● SYNCHRONISÉ":"● MODE LOCAL";s.className="status"+(ok?"":" off")};
+
+function flash(m,ok){let d=document.getElementById("flash");if(!d){d=document.createElement("div");d.id="flash";d.style.cssText="position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:9;background:#10000a;border:1px solid var(--warn);color:var(--warn);padding:12px;text-align:center";document.body.appendChild(d)}d.style.borderColor=d.style.color=ok?"var(--ok)":"var(--warn)";d.textContent=m;d.style.display="block";clearTimeout(d._t);d._t=setTimeout(()=>d.style.display="none",6000)}
+function save(){persist();return Promise.resolve()}
+async function persist(){
+  try{localStorage.setItem("navlink",JSON.stringify(S))}catch(e){}
+  if(ref){try{await ref.set(JSON.parse(JSON.stringify(S)))}catch(e){status(false);flash("Erreur de sauvegarde : "+((e&&(e.code||e.message))||e))}}
+}
+function norm(d){return Object.assign({riders:[],rate:0.2,pin:"",trips:[]},d||{})}
+
+function route(hid){
+  const stops=[];
+  if(S.depart)stops.push({t:S.depart,n:"Départ du conducteur",d:1});
+  S.riders.forEach(r=>{if(r.pickup)stops.push({t:r.pickup,n:r.name,me:r.id===hid})});
+  stops.sort((a,b)=>a.t.localeCompare(b.t));
+  const miss=S.riders.filter(r=>!r.pickup).map(r=>r.name);
+  if(!stops.length)return `<div class="log">Itinéraire pas encore défini.</div>`;
+  return `<div class="route">`+stops.map(s=>`<div class="stop${s.d?" drv":""}${s.me?" me":""}"><span class="t">${esc(s.t)}</span><span class="n">${esc(s.n)}${s.me?" ◄ toi":""}</span></div>`).join("")+`</div>`+(miss.length?`<div class="log">Heure non définie : ${esc(miss.join(", "))}</div>`:"");
+}
+
+function home(){
+  view=null;
+  el.innerHTML=`<div class="label">// Sélectionne ton profil</div><div class="grid" style="margin-top:12px">`+
+  S.riders.map(r=>`<div class="pilot" data-id="${r.id}">${esc(r.name)}</div>`).join("")+
+  `</div>`+(S.riders.length?"":`<div class="card">Aucun passager enregistré. Le conducteur doit d’abord ajouter les prénoms.</div>`)+
+  `<div class="label" style="margin-top:24px">// Carte de route</div>${route(null)}<div class="row" style="margin-top:28px"><button class="btn alt" id="drv">⚙ Poste de pilotage</button></div>`;
+  el.querySelectorAll(".pilot").forEach(b=>b.onclick=()=>rider(b.dataset.id));
+  document.getElementById("drv").onclick=driver;
+}
+
+function rider(id){
+  view=id;const r=S.riders.find(x=>x.id===id);if(!r)return home();
+  const mine=S.trips.filter(t=>t.ids.includes(id)).slice(-8).reverse();
+  el.innerHTML=`<button class="btn back" id="b">← Retour</button>
+  <div class="card"><div class="label">Passager</div><h2 style="margin:4px 0 18px;font-size:20px">${esc(r.name)}</h2>
+  <div class="label">Carte de route</div>${route(id)}
+  
+  <div class="label">Crédits dus au conducteur</div><div class="big ${r.owed>0.004?"debt":"zero"}">${eur(r.owed)}</div></div>
+  <div class="row"><button class="btn" id="nt">🔔 Activer les notifications</button></div><h2>Derniers trajets</h2>`+(mine.length?mine.map(t=>`<div class="log">${esc(t.date)} — ${t.km} km ÷ ${t.ids.length} → ${eur((t.sh&&t.sh[id]!=null)?t.sh[id]:t.km*S.rate)}</div>`).join(""):`<div class="log">Aucun trajet pour l’instant.</div>`);
+  document.getElementById("nt").onclick=()=>enableNotif(id);
+  document.getElementById("b").onclick=home;
+}
+
+function driver(){
+  view="driver";
+  if(!driverOK){
+    el.innerHTML=`<button class="btn back" id="b">← Retour</button><div class="card"><div class="label">Accès restreint</div>
+    <p>${S.pin?"Entre ton code conducteur.":"Première connexion : crée ton code conducteur."}</p>
+    <div class="row"><input id="pin" type="password" placeholder="Code"><button class="btn" id="ok">Valider</button></div></div>`;
+    document.getElementById("b").onclick=home;
+    document.getElementById("ok").onclick=async()=>{
+      const v=document.getElementById("pin").value.trim();if(!v)return;
+      if(!S.pin){S.pin=v;driverOK=true;await save();}
+      else if(v===S.pin)driverOK=true; else{flash("Code invalide");return}
+      driver();};
+    return;
+  }
+  el.innerHTML=`<button class="btn back" id="b">← Retour</button>
+  <h2 style="margin-top:0">Poste de pilotage</h2>
+  <div class="card" style="margin-bottom:12px"><div class="label">Jour du trajet</div><div class="row"><input id="day" type="date" value="${esc(S.day||"")}"><button class="btn" id="ds">OK</button></div><div class="label">Les notifications ne partent que ce jour-là.</div></div>
+  <div class="row"><button class="btn" id="nd">🔔 Activer mes notifications</button></div>
+  <div class="card"><div class="label">Tarif au kilomètre (€)</div><div class="row"><input id="rate" type="number" step="0.01" min="0" value="${S.rate}"><button class="btn" id="rs">OK</button></div>
+  <div class="label" style="margin-top:12px">Ajouter un passager</div><div class="row"><input id="nn" placeholder="Prénom"><button class="btn" id="na">Ajouter</button></div></div>
+  <h2>Nouveau trajet</h2><div class="card">
+  <div class="row"><input id="km" type="number" min="0" step="0.1" placeholder="Kilomètres"></div>
+  <div class="label">Heure de départ du conducteur</div><div class="row"><input id="dep" type="time" value="${esc(S.depart||"")}"></div>
+  <div class="row">${S.riders.map(r=>`<label class="chk"><input type="checkbox" class="tp" value="${r.id}">${esc(r.name)}</label>`).join("")||"—"}</div>
+  <div class="row"><button class="btn" id="tg">Enregistrer le trajet</button></div>
+  <div class="label">Le coût (km × tarif) est divisé entre les passagers cochés.</div></div>
+  <h2>Équipage</h2>`+S.riders.map(r=>`<div class="card" style="margin-bottom:10px">
+  <div class="row"><b style="min-width:90px">${esc(r.name)}</b><span class="${r.owed>0.004?"":""}" style="color:${r.owed>0.004?"var(--warn)":"var(--ok)"}">${eur(r.owed)}</span></div>
+  <div class="row"><input type="time" data-h="${r.id}" value="${esc(r.pickup||"")}"><button class="btn" data-hs="${r.id}">Heure</button></div>
+  <div class="row"><input type="number" step="0.01" min="0" placeholder="Remboursé (€)" data-p="${r.id}"><button class="btn" data-ps="${r.id}">Encaisser</button><button class="btn alt" data-del="${r.id}">✕</button></div></div>`).join("");
+  const $=s=>el.querySelector(s);
+  $("#b").onclick=home;$("#nd").onclick=()=>enableNotif("driver");$("#ds").onclick=()=>{S.day=$("#day").value;save();flash("✔ Jour enregistré",1)};
+  $("#rs").onclick=async()=>{const v=parseFloat($("#rate").value);if(v>=0){S.rate=v;save();flash("✔ Tarif enregistré : "+v+" €/km",1)}};
+  $("#na").onclick=async()=>{const n=$("#nn").value.trim();if(!n){flash("Entre un prénom.");return}S.riders.push({id:uid(),name:n,pickup:"",owed:0});save();driver();flash("✔ "+n+" ajouté",1)};
+  $("#tg").onclick=async()=>{
+    const km=parseFloat($("#km").value),ids=[...el.querySelectorAll(".tp:checked")].map(c=>c.value);
+    if(!(km>0)||!ids.length){flash("Renseigne les km et au moins un passager.");return}
+    const total=Math.round(km*S.rate*100),base=Math.floor(total/ids.length),extra=total-base*ids.length,sh={};
+    ids.forEach((i,k)=>{const part=base+(k<extra?1:0);sh[i]=part/100;const r=S.riders.find(x=>x.id===i);if(r)r.owed=(Math.round(r.owed*100)+part)/100});
+    S.depart=$("#dep").value||S.depart||"";
+    S.trips.push({date:new Date().toLocaleDateString("fr-FR"),km,ids,total:total/100,sh,depart:S.depart});
+    if(S.trips.length>200)S.trips=S.trips.slice(-200);
+    await save();driver()};
+  el.querySelectorAll("[data-hs]").forEach(b=>b.onclick=async()=>{const r=S.riders.find(x=>x.id===b.dataset.hs);r.pickup=el.querySelector(`[data-h="${r.id}"]`).value;await save();driver()});
+  el.querySelectorAll("[data-ps]").forEach(b=>b.onclick=async()=>{const r=S.riders.find(x=>x.id===b.dataset.ps);const v=parseFloat(el.querySelector(`[data-p="${r.id}"]`).value);if(!(v>0))return;r.owed=Math.max(0,Math.round((r.owed-v)*100)/100);await save();driver()});
+  el.querySelectorAll("[data-del]").forEach(b=>b.onclick=async()=>{if(b.dataset.arm!=="1"){b.dataset.arm="1";b.textContent="Sûr ?";return}S.riders=S.riders.filter(x=>x.id!==b.dataset.del);await save();driver()});
+}
+
+function render(){
+  if(view==="driver")return;           // ne pas écraser la saisie du conducteur
+  if(view&&S.riders.find(x=>x.id===view))rider(view);else home();
+}
+
+try{const l=localStorage.getItem("navlink");if(l)S=norm(JSON.parse(l))}catch(e){}
+render();
+firebase.initializeApp(CFG);
+ref=firebase.firestore().doc("app/state");
+ref.onSnapshot(snap=>{if(snap.exists)S=norm(snap.data());status(true);render()},()=>status(false));
+try{if(firebase.messaging.isSupported())firebase.messaging().onMessage(async p=>{const reg=await navigator.serviceWorker.getRegistration();const d=p.data||{};if(reg)reg.showNotification(d.title,{body:d.body})})}catch(e){}
+})();
+</script>
+</body>
+</html>
