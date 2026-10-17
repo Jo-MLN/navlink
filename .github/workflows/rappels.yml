@@ -1,0 +1,20 @@
+name: rappels
+on:
+  workflow_dispatch:
+concurrency:
+  group: rappels
+  cancel-in-progress: false
+jobs:
+  envoyer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: node scripts/rappels.js
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
